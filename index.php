@@ -1,48 +1,40 @@
 <?php
 if (isset($_POST["btnLogin"])) {
     require("lib/conn.php");
-    $email = isset($_POST["email"]) ? $_POST["email"] : '';
+    $username = isset($_POST["username"]) ? $_POST["username"] : '';
     $password = isset($_POST["password"]) ? $_POST["password"] : '';
 
-    // Adjusted regex pattern for strong password
-    $pattern = '/^(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,12}$/';
-
-    // Check if password meets the criteria
-    if (!preg_match($pattern, $password)) {
+    if (empty($username)) {
         $showAlert = true;
-        $errorMsg = "Password must be between 8 and 12 characters long, include at least one uppercase letter, one special character, and one number.";
+        $errorMsg = "Please enter a valid username!";
     } else {
-        $sql = "SELECT * FROM users WHERE email = :email";
+        $sql = "SELECT * FROM users WHERE username = :username";
         $stmt = $conn->prepare($sql);
-        $stmt->bindValue(":email", $email);
+        $stmt->bindValue(":username", $username);
         $stmt->execute();
         $user = $stmt->fetch();
 
-        if ($user) {
-            
         if ($user && password_verify($password, $user['password'])) {
-                if ($user['role'] == 'admin') {
-                    session_start();
-                    $_SESSION['uid'] = $user['uid'];
-                    $_SESSION['email'] = $email;
-                    header("Location: mainpage.php");
-                    exit();
-                } elseif ($user['role'] == 'doctor'){
-                    $_SESSION['uid'] = $user['uid'];
-                    $_SESSION['email'] = $email;
-                    header("Location: docmain.php");
-                }
-            
-             } else {
-                    // Incorrect username or password
-                    echo "<script>alert('Incorrect username or password!'); history.back();</script>";
-                }
+            session_start();
+            $_SESSION['uid'] = $user['uid'];
+            $_SESSION['username'] = $username;
+
+            if ($user['role'] == 'admin') {
+                header("Location: mainpage.php");
+                exit();
+            } elseif ($user['role'] == 'doctor') {
+                header("Location: queue_display.php");
+                exit();
+            } elseif ($user['role'] == 'nurse') {
+                header("Location: queue_lab.php");
+                exit();
+            }
         } else {
-            $showAlert = true;
-            $errorMsg = "No account found with this email.";
+            echo "<script>alert('Incorrect username or password!'); history.back();</script>";
         }
     }
 }
+
 
 ?>
 
@@ -92,8 +84,8 @@ if (isset($_POST["btnLogin"])) {
         <?php } ?> -->
             <form action="index.php" method="POST">
                 <div class="field input">
-                    <label for="email">Email</label>
-                    <input type="text" name="email" id="email" autocomplete="off" required>
+                    <label for="username">Username</label>
+                    <input type="text" name="username" id="username" autocomplete="off" required>
                 </div>
 
                 <div class="field input">

@@ -1,57 +1,42 @@
 <?php
+if (isset($_POST["btnSave"])) {
+    require("lib/conn.php");
 
+    $username = $_POST["username"];
+    $password = $_POST["password"]; // Get the password
+    $role = $_POST["role"];
+    $dept_id = $_POST["dept_id"];
 
- $pattern = '/^(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,12}$/'; // Regex pattern for password validation
+    // Remove password validation, just hash it
+    $password = password_hash($password, PASSWORD_BCRYPT);
 
- if (isset($_POST["btnSave"])) {
-     require("lib/conn.php");
-     $username = $_POST["username"];
-     $email = $_POST["email"];
-     $password = $_POST["password"]; // Get the password before validation
-     $role = $_POST["role"];
-     $dept_id = $_POST["dept_id"];
-
-
-     // Validate the password
-     if (!preg_match($pattern, $password)) {
+    if (empty($username)) {
         $showAlert = true;
-        $errorMsg = "Password must contain at least one uppercase letter, one number, one special character, and be between 8 to 12 characters long.";
-     } else {
-         $password = password_hash($password, PASSWORD_BCRYPT); // Hash the password if it passes validation
-     }
-
-     if (empty($email)) {
-         $showAlert = true;
-         $errorMsg = "Please enter a valid email!";
-     } else if (!empty($errorMsg)) {
-         $showAlert = true;
-         $errorMsg = "Password must contain at least one uppercase letter, one number, one special character, and be between 8 to 12 characters long";
-         
-     } else {
-         $sql = "INSERT INTO users (username, email, password, role, dept_id, status) VALUES (:username, :email, :password, :role, :dept_id, :status)";
-         $values = array(
+        $errorMsg = "Please enter a valid username!";
+    } else {
+        $sql = "INSERT INTO users (username, password, role, dept_id, status) VALUES (:username, :password, :role, :dept_id, :status)";
+        $values = array(
             ":username" => $username,
-             ":email" => $email,
-             ":password" => $password,
-             ":role" => $role,
-             ":dept_id" => $dept_id,
-             ":status" => 2
-         );
+            ":password" => $password,
+            ":role" => $role,
+            ":dept_id" => $dept_id,
+            ":status" => 2
+        );
 
-         $result = $conn->prepare($sql);
-         $result->execute($values);
+        $result = $conn->prepare($sql);
+        $result->execute($values);
 
-         if ($result->rowCount() > 0) {
-             echo "User has been created!";
-             header("Location: index.php");
-             exit();
-         } else {
-             echo "No record has been saved!";
-         }
-     }
- }
-
+        if ($result->rowCount() > 0) {
+            echo "User has been created!";
+            header("Location: index.php");
+            exit();
+        } else {
+            echo "No record has been saved!";
+        }
+    }
+}
 ?>
+
 
 <!DOCTYPE html>
 <html lang="en">
@@ -92,10 +77,6 @@
                     <div class="field input">
                         <label>Username:</label><br>
                         <input type="text" name="username">
-                    </div>
-                    <div class="field input">
-                        <label>Email:</label><br>
-                        <input type="text" name="email">
                     </div>
                     <div class="field input">
                         <label>Password:</label><br>
