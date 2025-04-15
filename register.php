@@ -1,20 +1,49 @@
 <?php
-if (isset($_POST["btnSave"])) {
-    require("lib/conn.php");
+require("lib/conn.php");
 
+// Fetch department list
+$departments = [];
+try {
+    $stmt = $conn->prepare("SELECT dept_id, name FROM departments ORDER BY name ASC");
+    $stmt->execute();
+    $departments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    echo "Error fetching departments: " . $e->getMessage();
+}
+
+// Fetch ENUM values for the 'role' column from 'users' table
+$roles = [];
+try {
+    $stmt = $conn->prepare("SHOW COLUMNS FROM users LIKE 'role'");
+    $stmt->execute();
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($row && preg_match("/^enum\((.*)\)$/", $row['Type'], $matches)) {
+        $enumValues = explode(",", $matches[1]);
+        foreach ($enumValues as $value) {
+            $roles[] = trim($value, "'");
+        }
+    }
+} catch (PDOException $e) {
+    echo "Error fetching roles: " . $e->getMessage();
+}
+
+$showAlert = false;
+$errorMsg = "";
+
+if (isset($_POST["btnSave"])) {
     $username = $_POST["username"];
-    $password = $_POST["password"]; // Get the password
+    $password = $_POST["password"];
     $role = $_POST["role"];
     $dept_id = $_POST["dept_id"];
 
-    // Remove password validation, just hash it
     $password = password_hash($password, PASSWORD_BCRYPT);
 
     if (empty($username)) {
         $showAlert = true;
         $errorMsg = "Please enter a valid username!";
     } else {
-        $sql = "INSERT INTO users (username, password, role, dept_id, status) VALUES (:username, :password, :role, :dept_id, :status)";
+        $sql = "INSERT INTO users (username, password, role, dept_id, status) 
+                VALUES (:username, :password, :role, :dept_id, :status)";
         $values = array(
             ":username" => $username,
             ":password" => $password,
@@ -46,28 +75,22 @@ if (isset($_POST["btnSave"])) {
     <title>HQS</title>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <link rel="stylesheet" href="lib\images\styles.css">
+    <link rel="stylesheet" href="lib/images/styles.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <style>
+        body {
+            background-color: #E4E6C9;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            background-size: cover;
+        }
+    </style>
 </head>
-<style type="text/css">
-    body{
-        background-color: #E4E6C9;
-    background-repeat: no-repeat;
-    background-attachment: fixed;
-    background-size: cover;
-}
-</style>
 
 <body>
-
-
-
 <div class="container-fluid">
     <div class="row">
-       
-        
-            <?php include('sidebar.php'); ?>
-     
+        <?php include('sidebar.php'); ?>
 
         <div class="col-md-7 col-lg-10 d-flex justify-content-center align-items-center" style="min-height: 100vh;">
             <div class="box form-box">
@@ -79,37 +102,35 @@ if (isset($_POST["btnSave"])) {
                         <input type="text" name="username">
                     </div>
                     <div class="field input">
-                        <label>Password:</label><br>
-                        <input type="password" name="password" id="password" required>
-                    </div>
-                    <div class="field input">
-                        <label>Role:</label><br>
-                        <select name="role">
-                            <option value="">Select Role</option>
-                            <option value="admin">Admin</option>
-                            <option value="doctor">Doctor</option>
-                            <option value="nurse">Nurse</option>
-                            <option value="receptionist">Receptionist</option>
-                        </select>
-                    </div>
+    <label>Role:</label><br>
+    <select name="role">
+        <option value="">Select Role</option>
+        <?php foreach ($roles as $roleOption): ?>
+            <option value="<?= htmlspecialchars($roleOption) ?>">
+                <?= htmlspecialchars(ucfirst($roleOption)) ?>
+            </option>
+        <?php endforeach; ?>
+    </select>
+</div>
+
                     <div class="field input">
                         <label>Department:</label><br>
                         <select name="dept_id">
                             <option value="">Select Department</option>
-                            <option value="1">Billing</option>
-                            <option value="2">Pharmacy</option>
-                            <option value="3">Medical Records</option>
-                            <option value="4">Ultrasound</option>
-                            <option value="5">X-ray</option>
-                            <option value="6">Rehabilitation</option>
-                            <option value="7">Dialysis</option>
-                            <option value="8">Laboratory</option>
-                            <option value="9">Admitting</option>
+                            <?php foreach ($departments as $dept): ?>
+                                <option value="<?= htmlspecialchars($dept['dept_id']) ?>">
+                                    <?= htmlspecialchars($dept['name']) ?>
+                                </option>
+                            <?php endforeach; ?>
                         </select>
                     </div>
-                    <input type="checkbox" onclick="showPassword()"> Show Password
+                    <div class="field input">
+                        <label>Password:</label><br>
+                        <input type="password" name="password" id="password" required>
+                    </div>
+                    <input type="checkbox" id="showPassword"> Show Password
                     <div class="field">
-                        <button class="btn btn-primary"  type="submit" name="btnSave">Sign Up</button>
+                        <button class="btn btn-primary" type="submit" name="btnSave">Sign Up</button>
                     </div>
                 </form>
             </div>
@@ -117,23 +138,12 @@ if (isset($_POST["btnSave"])) {
     </div>
 </div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            document.getElementById('showPassword').addEventListener('change', function() {
-                var passwordField = document.getElementById('password');
-                if (passwordField) { // Check if the password field exists
-                    if (this.checked) {
-                        passwordField.type = 'text';
-                    } else {
-                        passwordField.type = 'password';
-                    }
-                } else {
-                    console.error('Password field not found');
-                }
-            });
-        });
+<script>
+    document.getElementById('showPassword').addEventListener('change', function () {
+        var passwordField = document.getElementById('password');
+        passwordField.type = this.checked ? 'text' : 'password';
+    });
 </script>
-</body>
 
 <script>
     <?php if ($showAlert) { ?>
@@ -142,11 +152,7 @@ if (isset($_POST["btnSave"])) {
             title: 'Oops...',
             text: '<?php echo $errorMsg; ?>',
         });
-        <?php } ?>
-        
+    <?php } ?>
 </script>
-
+</body>
 </html>
-
-
-
