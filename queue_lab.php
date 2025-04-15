@@ -1,10 +1,10 @@
 <?php
 require('lib/conn.php');
 
-// Get department_id from URL or default to 8
+// Get department_id from URL or default to 1
 $departmentId = isset($_GET['department_id']) ? intval($_GET['department_id']) : 8;
 
-// Get department name
+// Fetch department name
 $deptName = "Unknown Department";
 $deptStmt = $conn->prepare("SELECT name FROM departments WHERE dept_id = :dept_id");
 $deptStmt->execute(['dept_id' => $departmentId]);
@@ -12,37 +12,69 @@ if ($row = $deptStmt->fetch()) {
     $deptName = $row['name'];
 }
 
-// Get current queue
-$currentSql = "SELECT * FROM queues WHERE status = 'in-progress' AND department_id = :dept_id ORDER BY created_at ASC LIMIT 1";
-$currentStmt = $conn->prepare($currentSql);
+// Get current queue (top prioritized and earliest number)
+$currentStmt = $conn->prepare("
+SELECT * FROM queues 
+WHERE status = 'in-progress' AND department_id = :dept_id
+ORDER BY 
+    CASE priority
+        WHEN 'emergency' THEN 1
+        WHEN 'PWD' THEN 2
+        WHEN 'senior' THEN 3
+        WHEN 'pregnant' THEN 4
+        ELSE 5
+    END,
+    CAST(SUBSTRING(queue_num, 5) AS UNSIGNED) ASC
+LIMIT 1
+");
 $currentStmt->execute(['dept_id' => $departmentId]);
 $currentQueue = $currentStmt->fetch();
 
-// Get upcoming queues
-$upcomingSql = "SELECT * FROM queues WHERE status = 'waiting' AND department_id = :dept_id ORDER BY created_at ASC LIMIT 3";
+// Get upcoming queues (priority based)
+$upcomingSql = "
+SELECT * 
+FROM queues 
+WHERE status = 'waiting' 
+AND department_id = :dept_id 
+ORDER BY 
+    CASE 
+        WHEN priority IN ('emergency', 'PWD', 'Senior_Citizen', 'pregnant') THEN 0 
+        ELSE 1 
+    END,
+    created_at ASC
+
+";
 $upcomingStmt = $conn->prepare($upcomingSql);
 $upcomingStmt->execute(['dept_id' => $departmentId]);
-$upcomingQueues = $upcomingStmt->fetchAll();
+$allUpcomingQueues = $upcomingStmt->fetchAll();
 
-// Handle the "Next in Queue" button click
+// Get extra queues beyond top 3 (for optional expand)
+$extraStmt = $conn->prepare("
+    SELECT * FROM queues 
+    WHERE status = 'waiting' 
+    AND department_id = :dept_id 
+    ORDER BY FIELD(priority, 'emergency', 'pwd', 'senior', 'pregnant', 'regular'), 
+             CAST(SUBSTRING(queue_num, 5) AS UNSIGNED) ASC 
+    LIMIT 18446744073709551615 OFFSET 3
+");
+$extraStmt->execute(['dept_id' => $departmentId]);
+$extraQueues = $extraStmt->fetchAll();
+
+// Handle 'Next in Queue'
 if (isset($_POST['next_in_queue'])) {
-    // Find the next queue in line
-    $nextQueue = $upcomingQueues[0]; 
+    $nextQueue = $allUpcomingQueues[0] ?? null;
 
     if ($nextQueue) {
-        // Update the next queue's status to 'in-progress'
-        $updateSql = "UPDATE queues SET status = 'in-progress' WHERE qid = :qid";
-        $updateStmt = $conn->prepare($updateSql);
-        $updateStmt->execute(['qid' => $nextQueue['qid']]);
-
-        // Optionally, you may want to update the status of the previous queue to 'finished'
+        // Mark current queue as finished
         if ($currentQueue) {
-            $finishSql = "UPDATE queues SET status = 'finished' WHERE qid = :qid";
-            $finishStmt = $conn->prepare($finishSql);
-            $finishStmt->execute(['qid' => $currentQueue['qid']]);
+            $conn->prepare("UPDATE queues SET status = 'finished' WHERE qid = :qid")
+                 ->execute(['qid' => $currentQueue['qid']]);
         }
 
-        // Refresh the page
+        // Promote next to in-progress
+        $conn->prepare("UPDATE queues SET status = 'in-progress' WHERE qid = :qid")
+             ->execute(['qid' => $nextQueue['qid']]);
+
         header("Location: " . $_SERVER['PHP_SELF'] . "?department_id=" . $departmentId);
         exit;
     }
@@ -53,7 +85,7 @@ if (isset($_POST['next_in_queue'])) {
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Hospital Queue</title>
+  <title>Queue - <?= htmlspecialchars($deptName) ?></title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -94,24 +126,13 @@ if (isset($_POST['next_in_queue'])) {
       margin-top: 30px;
     }
 
-    .upcoming span {
+    .upcoming span, .extra span {
       display: inline-block;
       background-color: #f1faee;
       margin: 5px;
       padding: 8px 15px;
       border-radius: 8px;
       color: #457b9d;
-    }
-
-    .add-button {
-      display: inline-block;
-      margin-bottom: 20px;
-      padding: 10px 20px;
-      background-color: #1d3557;
-      color: white;
-      border-radius: 8px;
-      text-decoration: none;
-      font-weight: bold;
     }
 
     .next-button {
@@ -128,56 +149,80 @@ if (isset($_POST['next_in_queue'])) {
     .next-button:hover {
       background-color: #1d3557;
     }
+
+    .toggle-extra {
+      margin-top: 15px;
+      color: #1d3557;
+      cursor: pointer;
+      font-size: 14px;
+      display: inline-block;
+    }
   </style>
   <script>
-  // Auto-refresh every 10 seconds (10000 milliseconds)
-  setTimeout(() => {
-    window.location.reload(); 
-  }, 10000); // Change to 5000 for 5 seconds, etc.
-</script>
+    // Auto-refresh every 10 seconds
+    setTimeout(() => {
+      window.location.reload();
+    }, 10000);
+
+    function toggleExtra() {
+      const extra = document.getElementById("extra-queues");
+      const toggle = document.getElementById("toggle-btn");
+      if (extra.style.display === "none") {
+        extra.style.display = "block";
+        toggle.innerText = "Show less ▲";
+      } else {
+        extra.style.display = "none";
+        toggle.innerText = "Show more ▼";
+      }
+    }
+  </script>
 </head>
 <body>
+  <div class="queue-box">
+    <h1>Hospital Queue</h1>
+    <h2>Department: <?= htmlspecialchars($deptName) ?></h2>
 
-<div class="queue-box">
-  <h1>Hospital Queue</h1>
-  <h2>Department: <?= htmlspecialchars($deptName) ?></h2>
+    <?php if ($currentQueue): ?>
+      <div class="current">In-Progress</div>
+      <div class="current-number"><?= str_pad($currentQueue['queue_num'], 3, '0', STR_PAD_LEFT); ?></div>
+      <div class="details">
+        Service: <?= htmlspecialchars($currentQueue['service_name']); ?> |
+        Priority: <strong><?= ucfirst($currentQueue['priority']); ?></strong>
+      </div>
+    <?php else: ?>
+      <div class="details">No queues are currently in progress.</div>
+    <?php endif; ?>
 
-  <!-- Show current queue only if it exists -->
-  <?php if ($currentQueue): ?>
-    <div class="current">In-Progress</div>  
-    <div class="current-number">
-      <?= str_pad($currentQueue['queue_num'], 3, '0', STR_PAD_LEFT); ?>
+    <div class="upcoming">
+      <h3>Upcoming</h3>
+      <?php foreach ($allUpcomingQueues as $q): ?>
+        <span>
+          <?= str_pad($q['queue_num'], 3, '0', STR_PAD_LEFT); ?>
+          (<?= ucfirst($q['priority']); ?>)
+        </span>
+      <?php endforeach; ?>
     </div>
 
-    <div class="details">
-      Service: <?= htmlspecialchars($currentQueue['service_name']); ?> |
-      Priority: <strong><?= ucfirst($currentQueue['priority']); ?></strong>
-    </div>
-  <?php else: ?>
-    <!-- No current queue message -->
-    <div class="details">No queues are currently in progress.</div>
-  <?php endif; ?>
+    <!-- Hidden extra queues -->
+    <?php if (count($extraQueues) > 0): ?>
+      <div id="extra-queues" class="extra" style="display:none;">
+        <?php foreach ($extraQueues as $q): ?>
+          <span>
+            <?= str_pad($q['queue_num'], 3, '0', STR_PAD_LEFT); ?>
+            (<?= ucfirst($q['priority']); ?>)
+          </span>
+        <?php endforeach; ?>
+      </div>
+      <div id="toggle-btn" class="toggle-extra" onclick="toggleExtra()">Show more ▼</div>
+    <?php endif; ?>
 
-  <div class="upcoming">
-    <h3>Upcoming</h3>
-    <?php foreach ($upcomingQueues as $q): ?>
-      <span>
-        <?= str_pad($q['queue_num'], 3, '0', STR_PAD_LEFT); ?>
-        (<?= ucfirst($q['priority']); ?>)
-      </span>
-    <?php endforeach; ?>
-  </div>
-
-  <!-- Show the "Next in Queue" button if there are upcoming queues -->
-<?php if (count($upcomingQueues) > 0): ?>
-    <form method="post">
+    <?php if (count($allUpcomingQueues) > 0): ?>
+      <form method="post">
         <button type="submit" name="next_in_queue" class="next-button">Next in Queue</button>
-    </form>
-<?php else: ?>
-    <div class="details">No more upcoming queues.</div>
-<?php endif; ?><br><br>
-
-</div>
-
+      </form>
+    <?php else: ?>
+      <div class="details">No upcoming queues.</div>
+    <?php endif; ?>
+  </div>
 </body>
 </html>

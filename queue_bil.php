@@ -2,7 +2,7 @@
 require('lib/conn.php');
 
 // Get department_id from URL or default to 1
-$departmentId = isset($_GET['department_id']) ? intval($_GET['department_id']) : 2;
+$departmentId = isset($_GET['department_id']) ? intval($_GET['department_id']) : 1;
 
 // Fetch department name
 $deptName = "Unknown Department";
@@ -44,22 +44,23 @@ ORDER BY
     created_at ASC
 
 ";
+
 $upcomingStmt = $conn->prepare($upcomingSql);
 $upcomingStmt->execute(['dept_id' => $departmentId]);
 $allUpcomingQueues = $upcomingStmt->fetchAll();
+
 
 // Get extra queues beyond top 3 (for optional expand)
 $extraStmt = $conn->prepare("
     SELECT * FROM queues 
     WHERE status = 'waiting' 
     AND department_id = :dept_id 
-    ORDER BY FIELD(priority, 'emergency', 'pwd', 'Senior_Citizen', 'pregnant', 'regular'), 
+    ORDER BY FIELD(priority, 'emergency', 'pwd', 'senior', 'pregnant', 'regular'), 
              CAST(SUBSTRING(queue_num, 5) AS UNSIGNED) ASC 
     LIMIT 18446744073709551615 OFFSET 3
 ");
 $extraStmt->execute(['dept_id' => $departmentId]);
 $extraQueues = $extraStmt->fetchAll();
-
 // Handle 'Next in Queue'
 if (isset($_POST['next_in_queue'])) {
     $nextQueue = $allUpcomingQueues[0] ?? null;

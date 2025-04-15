@@ -2,31 +2,55 @@
 require('lib/conn.php');
 
 // Fetch all departments
-$departmentsSql = "SELECT * FROM departments";
-$departmentsStmt = $conn->prepare($departmentsSql);
+$departmentsStmt = $conn->prepare("SELECT * FROM departments");
 $departmentsStmt->execute();
 $departments = $departmentsStmt->fetchAll();
 
-// Fetch the queues for each department
+// Prepare queue data
 $queues = [];
 foreach ($departments as $department) {
-    // Fetch the current queue for the department (in-progress)
-    $currentSql = "SELECT * FROM queues WHERE status = 'in-progress' AND department_id = :dept_id ORDER BY created_at ASC LIMIT 1";
-    $currentStmt = $conn->prepare($currentSql);
+    // Get current queue (top prioritized and earliest number)
+    $currentStmt = $conn->prepare("
+        SELECT * FROM queues 
+        WHERE status = 'in-progress' AND department_id = :dept_id
+        ORDER BY 
+            CASE priority
+                WHEN 'emergency' THEN 1
+                WHEN 'PWD' THEN 2
+                WHEN 'Senior_Citizen' THEN 3
+                WHEN 'pregnant' THEN 4
+                ELSE 5
+            END,
+            CAST(SUBSTRING(queue_num, 5) AS UNSIGNED) ASC
+        LIMIT 1
+    ");
     $currentStmt->execute(['dept_id' => $department['dept_id']]);
     $currentQueue = $currentStmt->fetch();
 
-    // Fetch upcoming queues for the department (waiting)
-    $upcomingSql = "SELECT * FROM queues WHERE status = 'waiting' AND department_id = :dept_id ORDER BY created_at ASC LIMIT 3";
+    // Get upcoming queues, ordered by priority and queue number
+    $upcomingSql = "
+    SELECT * 
+    FROM queues 
+    WHERE status = 'waiting' 
+    AND department_id = :dept_id 
+    ORDER BY 
+        CASE 
+            WHEN priority IN ('emergency', 'PWD', 'Senior_Citizen', 'pregnant') THEN 0 
+            ELSE 1 
+        END,
+        created_at ASC
+    
+    ";
     $upcomingStmt = $conn->prepare($upcomingSql);
     $upcomingStmt->execute(['dept_id' => $department['dept_id']]);
-    $upcomingQueues = $upcomingStmt->fetchAll();
+    $allUpcomingQueues = $upcomingStmt->fetchAll();
 
-    // Store department queues in an array
+    // Store data
     $queues[] = [
         'department' => $department,
         'currentQueue' => $currentQueue,
-        'upcomingQueues' => $upcomingQueues
+        'upcomingQueues' => array_slice($allUpcomingQueues, 0, 3),
+        'extraQueues' => array_slice($allUpcomingQueues, 3)
     ];
 }
 ?>
@@ -41,60 +65,21 @@ foreach ($departments as $department) {
       font-family: Arial, sans-serif;
       background: #f9f9f9;
       padding: 30px;
-      text-align: center;
-    }
-
-    .queue-container {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: space-between;
-      gap: 20px; /* Space between cards */
-    }
-
-    .queue-box {
-      background: #fff;
-      padding: 25px;
-      width: 300px; /* Set width for each card */
-      border-radius: 12px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-      text-align: center;
     }
 
     h1 {
       color: #1d3557;
+      text-align: center;
     }
 
-    .current {
-      font-size: 20px;
-      margin: 20px 0 5px;
-    }
-
-    .current-number {
-      font-size: 60px;
-      color: #e63946;
-    }
-
-    .details {
-      font-size: 16px;
-      color: #555;
-    }
-
-    .upcoming {
-      margin-top: 30px;
-    }
-
-    .upcoming span {
-      display: inline-block;
-      background-color: #f1faee;
-      margin: 5px;
-      padding: 8px 15px;
-      border-radius: 8px;
-      color: #457b9d;
+    .button-container {
+      text-align: center;
+      margin: 20px 0;
     }
 
     .add-button {
       display: inline-block;
-      margin-bottom: 20px;
+      margin: 10px;
       padding: 10px 20px;
       background-color: #1d3557;
       color: white;
@@ -103,70 +88,148 @@ foreach ($departments as $department) {
       font-weight: bold;
     }
 
-    .next-button {
-      margin-top: 15px;
-      padding: 10px 20px;
+    .add-button:hover {
       background-color: #457b9d;
-      color: #fff;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
+    }
+
+    .department-box {
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.05);
+      margin-bottom: 25px;
+      padding: 20px;
+    }
+
+    .department-header {
+      font-size: 1.2em;
+      font-weight: bold;
+      color: #1d3557;
+      margin-bottom: 10px;
+    }
+
+    .queue-info {
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .queue-item {
+      flex: 1 1 200px;
+      background: #f1faee;
+      padding: 10px;
+      border-radius: 6px;
+      color: #457b9d;
+      text-align: center;
+    }
+
+    .current-queue {
+      font-size: 24px;
+      color: #e63946;
       font-weight: bold;
     }
 
-    .next-button:hover {
-      background-color: #1d3557;
+    .btn-toggle {
+      background: none;
+      border: none;
+      color: #1d3557;
+      cursor: pointer;
+      font-size: 0.9rem;
+      margin-top: 10px;
+      text-decoration: underline;
+    }
+
+    .extra-queues {
+      margin-top: 10px;
+    }
+
+    .queue-list span {
+      display: inline-block;
+      margin: 3px;
+      padding: 6px 10px;
+      background-color: #f1faee;
+      border-radius: 6px;
+      color: #457b9d;
+    }
+
+    @media (max-width: 600px) {
+      .queue-info {
+        flex-direction: column;
+        align-items: center;
+      }
     }
   </style>
 </head>
 <body>
 
-<!-- Container for all queue cards -->
-<div class="queue-container">
-  <!-- Loop through each department and show the queues -->
-  <?php foreach ($queues as $queueData): ?>
-    <div class="queue-box">
-      <h1>Department: <?= htmlspecialchars($queueData['department']['name']); ?></h1>
+<h1>Hospital Queue Status</h1>
 
-      <div class="current">In-Progress</div>  
-      <div class="current-number">
-        <?php
-          echo $queueData['currentQueue']
-            ?  str_pad($queueData['currentQueue']['queue_num'], 3, '0', STR_PAD_LEFT)
-            : 'None';
-        ?>
-      </div>
-
-      <div class="details">
-        <?php if ($queueData['currentQueue']): ?>
-          Service: <?= $queueData['currentQueue']['service_name']; ?> |
-          Priority: <strong><?= ucfirst($queueData['currentQueue']['priority']); ?></strong>
-        <?php endif; ?>
-      </div>
-
-    
-      <!-- Display upcoming queues -->
-      <div class="upcoming">
-        <h3>Upcoming</h3>
-        <?php foreach ($queueData['upcomingQueues'] as $q): ?>
-          <span>
-            <?= str_pad($q['queue_num'], 3, '0', STR_PAD_LEFT); ?>
-            (<?= ucfirst($q['priority']); ?>)
-          </span>
-        <?php endforeach; ?>
-      </div>
-    </div>
-  <?php endforeach; ?>
+<div class="button-container">
+  <a href="add_patient_q.php" class="add-button">➕ Add Patient to Queue</a>
 </div>
 
-<a href="add_patient_q.php" class="add-button">
-  ➕ Add Patient to Queue
-</a>
+<?php foreach ($queues as $queueData): ?>
+  <div class="department-box">
+    <div class="department-header">
+      <?= htmlspecialchars($queueData['department']['name']); ?>
+    </div>
 
-<a href="queue_list.php" class="add-button">
-  Queue List
-</a>
+    <div class="queue-info">
+      <div class="queue-item">
+        <div>Current Number</div>
+        <div class="current-queue">
+          <?= $queueData['currentQueue']
+            ? htmlspecialchars($queueData['currentQueue']['queue_num'])
+            : 'None'; ?>
+        </div>
+      </div>
+
+      <div class="queue-item">
+        <div style="font-weight: bold;">Priority</div>
+        <div><span style="color: black;">
+          <?= $queueData['currentQueue']
+            ? ucfirst($queueData['currentQueue']['priority'])
+            : '—'; ?>
+        </span></div>
+      </div>
+
+      <div class="queue-item">
+        <div>Upcoming</div>
+        <div class="queue-list">
+          <?php if (count($queueData['upcomingQueues']) <= 0): ?>
+            <span>No upcoming queues.</span>
+          <?php else: ?>
+            <?php foreach ($queueData['upcomingQueues'] as $q): ?>
+              <span><?= htmlspecialchars($q['queue_num']); ?> (<?= ucfirst($q['priority']); ?>)</span>
+            <?php endforeach; ?>
+          <?php endif; ?>
+        </div>
+
+        <?php if (count($queueData['extraQueues']) > 0): ?>
+          <button class="btn-toggle" data-dept="<?= $queueData['department']['dept_id']; ?>">Show More</button>
+          <div class="extra-queues queue-list" id="extra-<?= $queueData['department']['dept_id']; ?>" style="display: none;">
+            <?php foreach ($queueData['extraQueues'] as $q): ?>
+              <span><?= htmlspecialchars($q['queue_num']); ?> (<?= ucfirst($q['priority']); ?>)</span>
+            <?php endforeach; ?>
+          </div>
+        <?php endif; ?>
+      </div>
+    </div>
+  </div>
+<?php endforeach; ?>
+
+<script>
+  document.querySelectorAll('.btn-toggle').forEach(btn => {
+    btn.addEventListener('click', function () {
+      const deptId = this.getAttribute('data-dept');
+      const extraContainer = document.getElementById('extra-' + deptId);
+      const isShown = extraContainer.style.display === 'block';
+
+      extraContainer.style.display = isShown ? 'none' : 'block';
+      this.textContent = isShown ? 'Show More' : 'Show Less';
+    });
+  });
+</script>
 
 </body>
 </html>
-

@@ -50,7 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Department ID to prefix mapping
     $departmentPrefixes = [
         1 => 'BIL-',    // Billing
-        2 => 'PHAR-',   // Pharmacy
+        2 => 'PHR-',   // Pharmacy
         3 => 'MED-',    // Medical Records
         4 => 'ULT-',    // Ultra-sound
         5 => 'XR-',     // X-ray

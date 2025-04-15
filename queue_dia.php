@@ -2,7 +2,7 @@
 require('lib/conn.php');
 
 // Get department_id from URL or default to 1
-$departmentId = isset($_GET['department_id']) ? intval($_GET['department_id']) : 2;
+$departmentId = isset($_GET['department_id']) ? intval($_GET['department_id']) : 7;
 
 // Fetch department name
 $deptName = "Unknown Department";

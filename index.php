@@ -22,11 +22,39 @@ if (isset($_POST["btnLogin"])) {
             if ($user['role'] == 'Admin') {
                 header("Location: mainpage.php");
                 exit();
-            } elseif ($user['role'] == 'Admitting') {
+            } elseif (in_array($user['role'], ['Admitting', 'HMO', 'Information'])) {
                 header("Location: queue_display.php");
                 exit();
-            } elseif ($user['role'] == 'Nurse') {
-                header("Location: queue_lab.php");
+            } elseif ($user['role'] == 'User') {
+                switch ($user['dept_id']) {
+                    case 1:
+                        header("Location: queue_bil.php");
+                        break;
+                    case 2:
+                        header("Location: queue_phar.php");
+                        break;
+                    case 3:
+                        header("Location: queue_med.php");
+                        break;
+                    case 4:
+                        header("Location: queue_ult.php");
+                        break;
+                    case 5:
+                        header("Location: queue_xr.php");
+                        break;
+                    case 6:
+                        header("Location: queue_rh.php");
+                        break;
+                    case 7:
+                        header("Location: queue_dia.php");
+                        break;
+                    case 8:
+                        header("Location: queue_lab.php");
+                        break;
+                    default:
+                        echo "<script>alert('Unauthorized department access.'); history.back();</script>";
+                        break;
+                }
                 exit();
             }
         } else {
@@ -34,9 +62,8 @@ if (isset($_POST["btnLogin"])) {
         }
     }
 }
-
-
 ?>
+
 
 <!DOCTYPE html>
 <html lang="en">
