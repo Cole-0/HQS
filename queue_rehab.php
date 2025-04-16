@@ -183,6 +183,8 @@ if (isset($_POST['next_in_queue'])) {
     <h2>Department: <?= htmlspecialchars($deptName) ?></h2>
 
     <?php if ($currentQueue): ?>
+      <button onclick="repeatAnnouncement()" class="next-button" style="background-color: #e76f51; margin-top: 10px;">🔊 Repeat Announcement</button>
+
       <div class="current">In-Progress</div>
       <div class="current-number"><?= str_pad($currentQueue['queue_num'], 3, '0', STR_PAD_LEFT); ?></div>
       <div class="details">
@@ -224,5 +226,71 @@ if (isset($_POST['next_in_queue'])) {
       <div class="details">No upcoming queues.</div>
     <?php endif; ?>
   </div>
+  <script>
+  function announceQueue(queueNumber, departmentName) {
+    const message = `Patient with the queue number ${queueNumber}, please proceed to the ${departmentName} department.`;
+
+    // Stop any existing speech 
+    window.speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(message);
+    utterance.lang = 'en-US';
+    utterance.rate = 0.9;
+
+    // Function to handle selecting voice and speaking
+    function setVoiceAndSpeak() {
+      const voices = window.speechSynthesis.getVoices();
+
+      let selectedVoice = voices.find(v => v.name.includes("Zira")) || 
+                          voices.find(v => v.name.toLowerCase().includes("female")) ||
+                          voices.find(v => v.lang === "en-US");
+
+      if (selectedVoice) {
+        utterance.voice = selectedVoice;
+      }
+
+      // Delay to ensure the message is spoken fully without cutting off
+      setTimeout(() => {
+        window.speechSynthesis.speak(utterance);
+      }, 100);
+    }
+
+    // Check if voices are loaded and then execute
+    if (speechSynthesis.getVoices().length === 0) {
+      window.speechSynthesis.onvoiceschanged = setVoiceAndSpeak;
+    } else {
+      setVoiceAndSpeak();
+    }
+  }
+
+  function initAnnouncement() {
+    <?php if ($currentQueue): ?>
+      const currentQueueNumber = "<?= $currentQueue['queue_num'] ?>";
+      const departmentName = "<?= addslashes($deptName) ?>";
+      const announcedKey = `announced_${currentQueueNumber}_<?= $departmentId ?>`;
+
+      if (!localStorage.getItem(announcedKey)) {
+        setTimeout(() => {
+          announceQueue(currentQueueNumber, departmentName);
+          localStorage.setItem(announcedKey, 'true');
+        }, 1000); // Slight delay to ensure page load before speaking
+      }
+    <?php endif; ?>
+  }
+  function repeatAnnouncement() {
+  const currentQueueNumber = "<?= $currentQueue['queue_num'] ?? '' ?>";
+  const departmentName = "<?= addslashes($deptName) ?>";
+
+  if (currentQueueNumber) {
+    announceQueue(currentQueueNumber, departmentName);
+  }
+}
+
+  // Wait for the page to load before running the announcement function
+  window.addEventListener('load', () => {
+    setTimeout(initAnnouncement, 500);  // Ensure the page is fully loaded
+  });
+</script>
+
 </body>
 </html>

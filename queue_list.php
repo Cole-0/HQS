@@ -8,11 +8,11 @@ foreach ($departments as $dept) {
     $deptMap[$dept['dept_id']] = $dept['name'];
 }
 
-// Get all queues
-$allQueuesSql = "SELECT * FROM queues ORDER BY created_at ASC";
+// Get all queues along with service names
+$allQueuesSql = "SELECT q.*, s.service_name FROM queues q
+                 LEFT JOIN services s ON q.service_name = s.service_name
+                 ORDER BY q.created_at ASC";
 $allQueues = $conn->query($allQueuesSql)->fetchAll(PDO::FETCH_ASSOC);
-
-
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -54,13 +54,14 @@ $allQueues = $conn->query($allQueuesSql)->fetchAll(PDO::FETCH_ASSOC);
   <h2 class="text-center">Hospital Queue Display</h2>
 
   <h4>All Queues</h4>
-<?php if (count($allQueues) > 0): ?>
+  <?php if (count($allQueues) > 0): ?>
   <table class="table table-bordered">
     <thead>
       <tr>
         <th>Queue Number</th>
         <th>Status</th>
         <th>Priority</th>
+        <th>Service</th>
         <th>Department</th>
         <th>Created At</th>
         <th>Actions</th>
@@ -72,6 +73,7 @@ $allQueues = $conn->query($allQueuesSql)->fetchAll(PDO::FETCH_ASSOC);
           <td>Q-<?php echo str_pad($q['queue_num'], 3, '0', STR_PAD_LEFT); ?></td>
           <td><?php echo ucfirst($q['status']); ?></td>
           <td><?php echo ucfirst($q['priority']); ?></td>
+          <td><?php echo htmlspecialchars($q['service_name']); ?></td> <!-- Display service name -->
           <td><?php echo $deptMap[$q['department_id']] ?? 'Unknown'; ?></td>
           <td><?php echo $q['created_at']; ?></td>
           <td>
@@ -86,11 +88,12 @@ $allQueues = $conn->query($allQueuesSql)->fetchAll(PDO::FETCH_ASSOC);
       <?php endforeach; ?>
     </tbody>
   </table>
-<?php else: ?>
-  <p class="text-muted">No queues found.</p>
-<?php endif; ?>
+  <?php else: ?>
+    <p class="text-muted">No queues found.</p>
+  <?php endif; ?>
 
 </div>
+
 <script>
   function confirmDelete(qid) {
     if (confirm("Are you sure you want to delete this queue?")) {

@@ -1,7 +1,6 @@
 <?php
 require("lib/conn.php");
 
-// Fetch department list
 $departments = [];
 try {
     $stmt = $conn->prepare("SELECT dept_id, name FROM departments ORDER BY name ASC");
@@ -11,7 +10,6 @@ try {
     echo "Error fetching departments: " . $e->getMessage();
 }
 
-// Fetch ENUM values for the 'role' column from 'users' table
 $roles = [];
 try {
     $stmt = $conn->prepare("SHOW COLUMNS FROM users LIKE 'role'");
@@ -29,6 +27,7 @@ try {
 
 $showAlert = false;
 $errorMsg = "";
+$showSuccess = false;
 
 if (isset($_POST["btnSave"])) {
     $username = $_POST["username"];
@@ -42,117 +41,229 @@ if (isset($_POST["btnSave"])) {
         $showAlert = true;
         $errorMsg = "Please enter a valid username!";
     } else {
-        $sql = "INSERT INTO users (username, password, role, dept_id, status) 
-                VALUES (:username, :password, :role, :dept_id, :status)";
-        $values = array(
-            ":username" => $username,
-            ":password" => $password,
-            ":role" => $role,
-            ":dept_id" => $dept_id,
-            ":status" => 2
-        );
-
-        $result = $conn->prepare($sql);
-        $result->execute($values);
-
-        if ($result->rowCount() > 0) {
-            echo "User has been created!";
-            header("Location: index.php");
-            exit();
+        $check = $conn->prepare("SELECT * FROM users WHERE username = :username");
+        $check->execute([':username' => $username]);
+        if ($check->rowCount() > 0) {
+            $showAlert = true;
+            $errorMsg = "User already exists!";
         } else {
-            echo "No record has been saved!";
+            $sql = "INSERT INTO users (username, password, role, dept_id, status) 
+                    VALUES (:username, :password, :role, :dept_id, :status)";
+            $values = array(
+                ":username" => $username,
+                ":password" => $password,
+                ":role" => $role,
+                ":dept_id" => $dept_id,
+                ":status" => 2
+            );
+
+            $result = $conn->prepare($sql);
+            $result->execute($values);
+
+            if ($result->rowCount() > 0) {
+                $showSuccess = true;
+            } else {
+                $showAlert = true;
+                $errorMsg = "No record has been saved!";
+            }
         }
     }
 }
 ?>
-
 
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HQS</title>
+    <title>Sign Up - HQS</title>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <link rel="stylesheet" href="lib/images/styles.css">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body {
-            background-color: #E4E6C9;
-            background-repeat: no-repeat;
-            background-attachment: fixed;
-            background-size: cover;
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(to right, #dff1f9, #c4e0e5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 480px;
+            padding: 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .form-box {
+            background-color: rgba(255, 255, 255, 0.85);
+            padding: 30px 25px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        .form-box header {
+            font-size: 24px;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 25px;
+            color: #1d3557;
+        }
+
+        .field {
+            margin-bottom: 20px;
+        }
+
+        .field label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: bold;
+            color: #1d3557;
+        }
+
+        input[type="text"],
+        input[type="password"],
+        select {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        input[type="text"]:focus,
+        input[type="password"]:focus,
+        select:focus {
+            outline: none;
+            border-color: #457b9d;
+            box-shadow: 0 0 5px rgba(69, 123, 157, 0.4);
+        }
+
+        .checkbox-field {
+            margin-bottom: 20px;
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            color: #1d3557;
+        }
+
+        .checkbox-field input {
+            margin-right: 10px;
+            transform: scale(1.2);
+        }
+
+        .btn {
+            width: 100%;
+            background-color: #1d3557;
+            color: white;
+            border: none;
+            padding: 12px;
+            font-weight: bold;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+
+        .btn:hover {
+            background-color: #457b9d;
+        }
+
+        .text-center {
+            text-align: center;
+            margin-top: 15px;
+        }
+
+        .text-center a {
+            color: #1d3557;
+            font-weight: bold;
+            text-decoration: none;
+        }
+
+        .text-center a:hover {
+            text-decoration: underline;
         }
     </style>
 </head>
-
 <body>
-<div class="container-fluid">
-    <div class="row">
-        <?php include('sidebar.php'); ?>
+    <div class="container">
+        <div class="form-box">
+            <header>SIGN UP</header>
+            <form action="register.php" method="POST">
+                <div class="field">
+                    <label for="username">Username:</label>
+                    <input type="text" name="username" id="username" required>
+                </div>
 
-        <div class="col-md-7 col-lg-10 d-flex justify-content-center align-items-center" style="min-height: 100vh;">
-            <div class="box form-box">
-                <center><header>SIGN UP</header></center>
-                <form action="register.php" method="POST">
-                    <div class="line"></div>
-                    <div class="field input">
-                        <label>Username:</label><br>
-                        <input type="text" name="username">
-                    </div>
-                    <div class="field input">
-    <label>Role:</label><br>
-    <select name="role">
-        <option value="">Select Role</option>
-        <?php foreach ($roles as $roleOption): ?>
-            <option value="<?= htmlspecialchars($roleOption) ?>">
-                <?= htmlspecialchars(ucfirst($roleOption)) ?>
-            </option>
-        <?php endforeach; ?>
-    </select>
-</div>
+                <div class="field">
+                    <label for="role">Role:</label>
+                    <select name="role" id="role" required>
+                        <option value="">Select Role</option>
+                        <?php foreach ($roles as $roleOption): ?>
+                            <option value="<?= htmlspecialchars($roleOption) ?>">
+                                <?= htmlspecialchars(ucfirst($roleOption)) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
 
-                    <div class="field input">
-                        <label>Department:</label><br>
-                        <select name="dept_id">
-                            <option value="">Select Department</option>
-                            <?php foreach ($departments as $dept): ?>
-                                <option value="<?= htmlspecialchars($dept['dept_id']) ?>">
-                                    <?= htmlspecialchars($dept['name']) ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="field input">
-                        <label>Password:</label><br>
-                        <input type="password" name="password" id="password" required>
-                    </div>
-                    <input type="checkbox" id="showPassword"> Show Password
-                    <div class="field">
-                        <button class="btn btn-primary" type="submit" name="btnSave">Sign Up</button>
-                    </div>
-                </form>
-            </div>
+                <div class="field">
+                    <label for="dept_id">Department:</label>
+                    <select name="dept_id" id="dept_id" required>
+                        <option value="">Select Department</option>
+                        <?php foreach ($departments as $dept): ?>
+                            <option value="<?= htmlspecialchars($dept['dept_id']) ?>">
+                                <?= htmlspecialchars($dept['name']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div class="field">
+                    <label for="password">Password:</label>
+                    <input type="password" name="password" id="password" required>
+                </div>
+
+                <div class="checkbox-field">
+                    <input type="checkbox" onclick="togglePassword()" id="showPass">
+                    <label for="showPass">Show Password</label>
+                </div>
+
+                <div class="field">
+                    <button type="submit" class="btn" name="btnSave">Sign Up</button>
+                </div>
+            </form>
         </div>
     </div>
-</div>
 
-<script>
-    document.getElementById('showPassword').addEventListener('change', function () {
-        var passwordField = document.getElementById('password');
-        passwordField.type = this.checked ? 'text' : 'password';
-    });
-</script>
+    <script>
+        function togglePassword() {
+            const pass = document.getElementById("password");
+            pass.type = pass.type === "password" ? "text" : "password";
+        }
 
-<script>
-    <?php if ($showAlert) { ?>
-        Swal.fire({
-            icon: 'error',
-            title: 'Oops...',
-            text: '<?php echo $errorMsg; ?>',
-        });
-    <?php } ?>
-</script>
+        <?php if ($showSuccess): ?>
+            Swal.fire({
+                icon: 'success',
+                title: 'Account Created!',
+                text: 'User has been created successfully.',
+                confirmButtonText: 'Go to Home'
+            }).then(() => {
+                window.location.href = 'index.php';
+            });
+        <?php elseif ($showAlert): ?>
+            Swal.fire({
+                icon: 'error',
+                title: 'Oops...',
+                text: '<?= $errorMsg; ?>'
+            });
+        <?php endif; ?>
+    </script>
 </body>
 </html>
