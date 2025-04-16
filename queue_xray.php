@@ -32,18 +32,19 @@ $currentQueue = $currentStmt->fetch();
 
 // Get upcoming queues (priority based)
 $upcomingSql = "
-SELECT * 
-FROM queues 
-WHERE status = 'waiting' 
-AND department_id = :dept_id 
-ORDER BY 
-    CASE 
-        WHEN priority IN ('emergency', 'PWD', 'Senior_Citizen', 'pregnant') THEN 0 
-        ELSE 1 
-    END,
-    created_at ASC
+    SELECT * 
+    FROM queues 
+    WHERE status = 'waiting' 
+    AND department_id = :dept_id 
+    ORDER BY 
+       CASE 
+    WHEN priority = 'emergency' THEN 0
+    WHEN priority IN ('PWD', 'Senior_Citizen', 'pregnant') THEN 1
+    ELSE 2
+END,
 
-";
+        created_at ASC
+    ";
 $upcomingStmt = $conn->prepare($upcomingSql);
 $upcomingStmt->execute(['dept_id' => $departmentId]);
 $allUpcomingQueues = $upcomingStmt->fetchAll();

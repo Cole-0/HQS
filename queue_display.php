@@ -31,10 +31,12 @@ foreach ($departments as $department) {
     WHERE status = 'waiting' 
     AND department_id = :dept_id 
     ORDER BY 
-        CASE 
-            WHEN priority IN ('emergency', 'PWD', 'Senior_Citizen', 'pregnant') THEN 0 
-            ELSE 1 
-        END,
+       CASE 
+    WHEN priority = 'emergency' THEN 0
+    WHEN priority IN ('PWD', 'Senior_Citizen', 'pregnant') THEN 1
+    ELSE 2
+END,
+
         created_at ASC
     ";
     $upcomingStmt = $conn->prepare($upcomingSql);
@@ -121,7 +123,6 @@ body {
 }
 
 .nav-link::before {
-  content: "📍";
   margin-right: 8px;
   font-size: 1.1rem;
 }
@@ -269,7 +270,9 @@ h1 {
   <h2>HOSPITAL</h2>
   <a href="add_patient_q.php" class="nav-link"> PATIENT TO QUEUE</a>
   <a href="queue_list.php" class="nav-link"> QUEUE HISTORY</a>
+  <a href="queue_display_user.php" class="nav-link" target="_blank">📢 NOW SERVING</a>
 </div>
+
 
 <!-- Main content -->
 <div class="main-content">

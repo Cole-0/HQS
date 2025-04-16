@@ -60,15 +60,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         9 => 'ADM-',    // Admitting
         10 => 'HMO-',   // HMO
         11 => 'INF-',   // Information
+        12 => 'ER-',   // Emergency Room
+        13 => 'SW-'   // Social Worker
     ];
 
     // Get the prefix for the department
     $prefix = $departmentPrefixes[$department_id] ?? 'GEN';
 
-    // Fetch last queue number for the department
-    $stmt = $conn->prepare("SELECT queue_num FROM queues WHERE department_id = :department_id ORDER BY qid DESC LIMIT 1");
-    $stmt->execute([':department_id' => $department_id]);
-    $lastQueue = $stmt->fetch(PDO::FETCH_ASSOC);
+    // Fetch the last queue number globally (regardless of department)
+$stmt = $conn->prepare("SELECT queue_num FROM queues ORDER BY qid DESC LIMIT 1");
+$stmt->execute();
+$lastQueue = $stmt->fetch(PDO::FETCH_ASSOC);
+
+// Extract numeric part from the last queue number
+if ($lastQueue && preg_match('/(\d+)$/', $lastQueue['queue_num'], $matches)) {
+    $lastNum = intval($matches[1]);
+} else {
+    $lastNum = 0;
+}
+
 
     // Extract numeric part from the queue number
     if ($lastQueue && preg_match('/\d+$/', $lastQueue['queue_num'], $matches)) {
@@ -79,7 +89,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Pad to 3 digits for the next queue number
     $numericPart = str_pad($lastNum + 1, 3, '0', STR_PAD_LEFT);
-    $queue_num = $prefix . $numericPart;
+$queue_num = $prefix . $numericPart;
+
 
     try {
         // Insert into the queues table
