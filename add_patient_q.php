@@ -1,11 +1,22 @@
 <?php
+session_start();
 require('lib/conn.php');
+
+// Check if user is logged in, otherwise redirect to login
+if (!isset($_SESSION['user_id'])) {
+  header("Location: index.php");
+  exit();
+}
 
 // Fetch departments from the departments table
 $departments = $conn->query("SELECT * FROM departments")->fetchAll();
 
 // Initialize an empty array for services
 $departmentServices = [];
+
+$role = $_SESSION['role'];
+$username = $_SESSION['username'];
+$departmentId = $_SESSION['dept_id'] ?? null;
 
 // Check if department_id is set in the query string (GET)
 if (isset($_GET['department_id']) && !empty($_GET['department_id'])) {
@@ -94,8 +105,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ':department_id' => $department_id,
             ':priority' => $priority
         ]);
+        if ($role == "Admin"){
+          header("Location: queue_display_admin.php");
+        } else{
+          header("Location: queue_display.php");
+        }
         
-        header("Location: queue_display.php");
         exit();
     } catch (PDOException $e) {
         echo "Error adding to queue: " . $e->getMessage();

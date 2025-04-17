@@ -332,14 +332,37 @@ foreach ($departments as $department) {
 <button class="hamburger" onclick="toggleSidebar()">☰</button>
 
 <!-- Sidebar -->
-<div class="sidebar">
+<nav class="sidebar" aria-label="Main navigation">
   <h2>HOSPITAL</h2>
-  <a href="add_patient_q.php" class="nav-link"><i class="fas fa-user-plus icon"></i><span>PATIENT TO QUEUE</span></a>
-  <a href="queue_list.php" class="nav-link"><i class="fas fa-list-alt icon"></i><span>QUEUE HISTORY</span></a>
-  <a href="queue_display_user.php" class="nav-link" target="_blank"><i class="fas fa-bullhorn icon"></i><span>NOW SERVING</span></a>
-</div>
+  <a href="add_patient_q.php?user_id=<?php echo htmlspecialchars($role); ?>" class="nav-link">
+    <i class="fas fa-user-plus icon" aria-hidden="true"></i>
+    <span>PATIENT TO QUEUE</span>
+  </a>
+  <a href="queue_list.php" class="nav-link">
+    <i class="fas fa-list-alt icon" aria-hidden="true"></i>
+    <span>QUEUE HISTORY</span>
+  </a>
+  <a href="mainpage.php" class="nav-link">
+    <i class="fas fa-stream icon" aria-hidden="true"></i>
+    <span>DEPARTMENT QUEUE</span>
+  </a>
+  <?php if ($role === 'Admin'): ?>
+    <a href="register.php" class="nav-link">
+      <i class="fas fa-user-cog icon" aria-hidden="true"></i>
+      <span>ADD USER</span>
+    </a>
+  <?php endif; ?>
+  <a href="queue_display_user.php" class="nav-link" target="_blank">
+    <i class="fas fa-bullhorn icon" aria-hidden="true"></i>
+    <span>NOW SERVING</span>
+  </a>
+  <button class="nav-link" id="logoutBtn" style="margin-top: auto; background: none; border: none; cursor: pointer; text-align: left;">
+    <i class="fas fa-sign-out-alt icon" aria-hidden="true"></i>
+    <span>LOGOUT</span>
+  </button>
+</nav>
 
-<!-- Logout Modal -->
+<!-- Logout Confirmation Modal -->
 <div class="modal" id="logoutModal">
   <div class="modal-content">
     <h3>Confirm Logout</h3>
