@@ -20,12 +20,14 @@ if (isset($_POST["btnLogin"])) {
 
         if ($user && password_verify($password, $user['password'])) {
             $_SESSION['user_id'] = $user['user_id'];
-            $_SESSION['username'] = $username;
+            $_SESSION['username'] = $user['username'];
+            $_SESSION['role'] = $user['role']; // Set role from database, not from POST
+            $_SESSION['dept_id'] = $user['dept_id'] ?? null; // Set department ID if exists
 
             if ($user['role'] == 'Admin') {
                 header("Location: mainpage.php");
                 exit();
-            } elseif (in_array($user['role'], ['Admitting', 'HMO', 'Information'])) {
+            } elseif (in_array($user['role'], ['Admitting', 'Information'])) {
                 header("Location: queue_display.php");
                 exit();
             } elseif ($user['role'] == 'User') {
@@ -233,10 +235,6 @@ if (isset($_POST["btnLogin"])) {
           <button type="submit" class="btn" name="btnLogin">Login</button>
         </div>
       </form>
-      <div class="text-center">
-        Don't have an account? <a href="register.php">Sign up</a><br>
-        <a href="forgot_password.php">Forgot password?</a>
-      </div>
     </div>
   </div>
 
