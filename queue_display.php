@@ -57,6 +57,7 @@ END,
 <head>
   <meta charset="UTF-8">
   <title>Hospital Queue</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
   <style>
     * {
   box-sizing: border-box;
@@ -88,52 +89,51 @@ body {
 
 /* Sidebar */
 .sidebar {
-  width: 280px;
-  background-color: #1d3557;
-  color: white;
-  padding: 30px 20px;
-  display: flex;
-  flex-direction: column;
-}
+      width: 280px;
+      background-color: #1d3557;
+      color: white;
+      padding: 30px 20px;
+      display: flex;
+      flex-direction: column;
+    }
 
-.sidebar h2 {
-  font-size: 1.6rem;
-  margin-bottom: 40px;
-  text-align: center;
-  font-weight: bold;
-  letter-spacing: 1px;
-}
+    .sidebar h2 {
+      font-size: 1.6rem;
+      margin-bottom: 40px;
+      text-align: center;
+      font-weight: bold;
+      letter-spacing: 1px;
+    }
 
-.nav-link {
-  margin: 12px 0;
-  text-decoration: none;
-  color: white;
-  font-size: 18px;
-  font-weight: bold;
-  display: flex;
-  align-items: center;
-  padding: 10px 15px;
-  border-radius: 8px;
-  transition: background 0.3s ease;
-  white-space: nowrap;
-}
+    .nav-link {
+      margin: 12px 0;
+      text-decoration: none;
+      color: white;
+      font-size: 18px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      padding: 10px 15px;
+      border-radius: 8px;
+      transition: background 0.3s ease;
+      white-space: nowrap;
+    }
 
-.nav-link:hover {
-  background-color: #457b9d;
-}
+    .nav-link:hover {
+      background-color: #457b9d;
+    }
 
-.nav-link::before {
-  margin-right: 8px;
-  font-size: 1.1rem;
-}
+    .nav-link i.icon {
+      margin-right: 10px;
+      font-size: 20px;
+      width: 25px;
+      text-align: center;
+    }
 
-.nav-link:first-of-type::before {
-  content: "➕";
-}
+    .nav-link span {
+      flex: 1;
+    }
 
-.nav-link:nth-of-type(2)::before {
-  content: "📋";
-}
 
 /* Main content */
 .main-content {
@@ -268,9 +268,9 @@ h1 {
 <!-- Sidebar -->
 <div class="sidebar">
   <h2>HOSPITAL</h2>
-  <a href="add_patient_q.php" class="nav-link"> PATIENT TO QUEUE</a>
-  <a href="queue_list.php" class="nav-link"> QUEUE HISTORY</a>
-  <a href="queue_display_user.php" class="nav-link" target="_blank">📢 NOW SERVING</a>
+  <a href="add_patient_q.php" class="nav-link"><i class="fas fa-user-plus icon"></i><span>PATIENT TO QUEUE</span></a>
+  <a href="queue_list.php" class="nav-link"><i class="fas fa-list-alt icon"></i><span>QUEUE HISTORY</span></a>
+  <a href="queue_display_user.php" class="nav-link" target="_blank"><i class="fas fa-bullhorn icon"></i><span>NOW SERVING</span></a>
 </div>
 
 
@@ -328,6 +328,13 @@ h1 {
     </div>
   <?php endforeach; ?>
 </div>
+
+<script>
+    // Auto-refresh every 10 seconds
+    setInterval(function () {
+      location.reload();
+    }, 10000);
+  </script>
 
 <!-- Scripts -->
 <script>

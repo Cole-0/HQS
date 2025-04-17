@@ -69,7 +69,7 @@ if (isset($_POST['next_in_queue'])) {
     if ($nextQueue) {
         // Mark current queue as finished
         if ($currentQueue) {
-            $conn->prepare("UPDATE queues SET status = 'finished' WHERE qid = :qid")
+            $conn->prepare("UPDATE queues SET status = 'completed' WHERE qid = :qid")
                  ->execute(['qid' => $currentQueue['qid']]);
         }
 

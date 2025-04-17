@@ -196,11 +196,19 @@ $allQueues = $conn->query($allQueuesSql)->fetchAll(PDO::FETCH_ASSOC);
 
 <script>
   function confirmDelete(qid, queueNumber) {
-    document.getElementById('confirmDeleteBtn').href = 'delete_queue.php?qid=' + qid;z
+    document.getElementById('confirmDeleteBtn').href = 'delete_queue.php?qid=' + qid;
     document.getElementById('queueIdentifier').innerText = queueNumber;
     const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
     deleteModal.show();
   }
+  
+  // Initialize tooltips
+  document.addEventListener('DOMContentLoaded', function() {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+      return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+  });
 </script>
 
 </body>

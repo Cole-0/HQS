@@ -2,7 +2,7 @@
 require('lib/conn.php');
 
 // Get department_id from URL or default to 1
-$departmentId = isset($_GET['department_id']) ? intval($_GET['department_id']) : 7;
+$departmentId = isset($_GET['department_id']) ? intval($_GET['department_id']) : 14;
 
 // Fetch department name
 $deptName = "Unknown Department";
@@ -384,7 +384,7 @@ function initializeAnnouncements() {
   
   <?php if (isset($currentQueue) && $currentQueue): ?>
     // Auto-announce on page load 
-    if (window.location.pathname.includes('queue_dia.php')) {
+    if (window.location.pathname.includes('queue_sw.php')) {
       const announcedKey = `announced_${<?= $currentQueue['queue_num'] ?>}_<?= $departmentId ?>`;
       if (!localStorage.getItem(announcedKey)) {
         setTimeout(() => {

@@ -1,5 +1,16 @@
 <?php
+session_start();
 require('lib/conn.php');
+
+// Check if user is logged in, otherwise redirect to login
+if (!isset($_SESSION['user_id'])) {
+    header("Location: index.php");
+    exit();
+}
+
+$role = $_SESSION['role'];
+$username = $_SESSION['username'];
+$departmentId = $_SESSION['dept_id'] ?? null;
 
 // Fetch all departments
 $departmentsStmt = $conn->prepare("SELECT * FROM departments");
@@ -242,6 +253,18 @@ foreach ($departments as $department) {
         width: calc(50% - 20px);
       }
     }
+
+    .user-info {
+      text-align: right;
+      margin-bottom: 10px;
+      padding: 8px 15px;
+      background-color: #e63946;
+      color: white;
+      border-radius: 5px;
+      display: inline-block;
+      float: right;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
@@ -252,77 +275,128 @@ foreach ($departments as $department) {
 <!-- Sidebar -->
 <div class="sidebar">
   <h2>HOSPITAL</h2>
-  <a href="add_patient_q.php" class="nav-link"><i class="fas fa-user-plus icon"></i><span>PATIENT TO QUEUE</span></a>
-  <a href="queue_list.php" class="nav-link"><i class="fas fa-list-alt icon"></i><span>QUEUE HISTORY</span></a>
-  <a href="mainpage.php" class="nav-link"><i class="fas fa-stream icon"></i><span>DEPARTMENT QUEUE</span></a>
-  <a href="register.php" class="nav-link"><i class="fas fa-user-cog icon"></i><span>ADD USER</span></a>
-  <a href="queue_display_user.php" class="nav-link" target="_blank"><i class="fas fa-bullhorn icon"></i><span>NOW SERVING</span></a>
+  <a href="add_patient_q.php?role=<?php echo htmlspecialchars($role); ?>" class="nav-link">
+    <i class="fas fa-user-plus icon"></i>
+    <span>PATIENT TO QUEUE</span>
+  </a>
+  <a href="queue_list.php" class="nav-link">
+    <i class="fas fa-list-alt icon"></i>
+    <span>QUEUE HISTORY</span>
+  </a>
+  <a href="mainpage.php" class="nav-link">
+    <i class="fas fa-stream icon"></i>
+    <span>DEPARTMENT QUEUE</span>
+  </a>
+  <?php if ($role === 'Admin'): ?>
+    <a href="register.php" class="nav-link">
+      <i class="fas fa-user-cog icon"></i>
+      <span>ADD USER</span>
+    </a>
+  <?php endif; ?>
+  <a href="queue_display_user.php" class="nav-link" target="_blank">
+    <i class="fas fa-bullhorn icon"></i>
+    <span>NOW SERVING</span>
+  </a>
+  <a href="logout.php" class="nav-link" style="margin-top: auto;">
+    <i class="fas fa-sign-out-alt icon"></i>
+    <span>LOGOUT</span>
+  </a>
 </div>
 
 <!-- Main content -->
 <div class="main-content">
+  <div class="user-info">
+    Welcome, <?php echo htmlspecialchars($username); ?> (<?php echo htmlspecialchars($role); ?>)
+  </div>
+  
   <h1>Select a Department</h1>
   <div class="grid">
-    <a href="queue_bil.php">
-      <div class="card">
-        <i class="fas fa-hospital"></i>
-        <h2>Billing</h2>
-      </div>
-    </a>
-    <a href="queue_phar.php">
-      <div class="card">
-        <i class="fas fa-pills"></i>
-        <h2>Pharmacy</h2>
-      </div>
-    </a>
-    <a href="queue_med.php">
-      <div class="card">
-        <i class="fas fa-stethoscope"></i>
-        <h2>Medical</h2>
-      </div>
-    </a>
-    <a href="queue_ult.php">
-      <div class="card">
-        <i class="fas fa-syringe"></i>
-        <h2>Ultrasound</h2>
-      </div>
-    </a>
-    <a href="queue_xray.php">
-      <div class="card">
-        <i class="fas fa-x-ray"></i>
-        <h2>X-Ray</h2>
-      </div>
-    </a>
-    <a href="queue_rehab.php">
-      <div class="card">
-        <i class="fas fa-wheelchair"></i>
-        <h2>Rehabilitation</h2>
-      </div>
-    </a>
-    <a href="queue_dia.php">
-      <div class="card">
-        <i class="fas fa-heartbeat"></i>
-        <h2>Dialysis</h2>
-      </div>
-    </a>
-    <a href="queue_lab.php">
-      <div class="card">
-        <i class="fas fa-flask"></i>
-        <h2>Laboratory</h2>
-      </div>
-    </a>
-    <a href="queue_er.php">
-      <div class="card">
-        <i class="fas fa-ambulance"></i>
-        <h2>Emergency Room</h2>
-      </div>
-    </a>
-    <a href="queue_sw.php">
-      <div class="card">
-        <i class="fas fa-user-friends"></i>
-        <h2>Social Worker</h2>
-      </div>
-    </a>
+    <?php if ($role === 'Admin' || $role === 'Admitting' || $role === 'Information' || $departmentId == 1): ?>
+      <a href="queue_bil.php">
+        <div class="card">
+          <i class="fas fa-hospital"></i>
+          <h2>Billing</h2>
+        </div>
+      </a>
+    <?php endif; ?>
+    
+    <?php if ($role === 'Admin' || $role === 'Admitting' || $role === 'Information' || $departmentId == 2): ?>
+      <a href="queue_phar.php">
+        <div class="card">
+          <i class="fas fa-pills"></i>
+          <h2>Pharmacy</h2>
+        </div>
+      </a>
+    <?php endif; ?>
+    
+    <?php if ($role === 'Admin' || $role === 'Admitting' || $role === 'Information' || $departmentId == 3): ?>
+      <a href="queue_med.php">
+        <div class="card">
+          <i class="fas fa-stethoscope"></i>
+          <h2>Medical</h2>
+        </div>
+      </a>
+    <?php endif; ?>
+    
+    <?php if ($role === 'Admin' || $role === 'Admitting' || $role === 'Information' || $departmentId == 4): ?>
+      <a href="queue_ult.php">
+        <div class="card">
+          <i class="fas fa-syringe"></i>
+          <h2>Ultrasound</h2>
+        </div>
+      </a>
+    <?php endif; ?>
+    
+    <?php if ($role === 'Admin' || $role === 'Admitting' || $role === 'Information' || $departmentId == 5): ?>
+      <a href="queue_xray.php">
+        <div class="card">
+          <i class="fas fa-x-ray"></i>
+          <h2>X-Ray</h2>
+        </div>
+      </a>
+    <?php endif; ?>
+    
+    <?php if ($role === 'Admin' || $role === 'Admitting' || $role === 'Information' || $departmentId == 6): ?>
+      <a href="queue_rehab.php">
+        <div class="card">
+          <i class="fas fa-wheelchair"></i>
+          <h2>Rehabilitation</h2>
+        </div>
+      </a>
+    <?php endif; ?>
+    
+    <?php if ($role === 'Admin' || $role === 'Admitting' || $role === 'Information' || $departmentId == 7): ?>
+      <a href="queue_dia.php">
+        <div class="card">
+          <i class="fas fa-heartbeat"></i>
+          <h2>Dialysis</h2>
+        </div>
+      </a>
+    <?php endif; ?>
+    
+    <?php if ($role === 'Admin' || $role === 'Admitting' || $role === 'Information' || $departmentId == 8): ?>
+      <a href="queue_lab.php">
+        <div class="card">
+          <i class="fas fa-flask"></i>
+          <h2>Laboratory</h2>
+        </div>
+      </a>
+    <?php endif; ?>
+    
+    <?php if ($role === 'Admin' || $role === 'Admitting' || $role === 'Information'): ?>
+      <a href="queue_er.php">
+        <div class="card">
+          <i class="fas fa-ambulance"></i>
+          <h2>Emergency Room</h2>
+        </div>
+      </a>
+      <a href="queue_sw.php">
+        <div class="card">
+          <i class="fas fa-user-friends"></i>
+          <h2>Social Worker</h2>
+        </div>
+      </a>
+    <?php endif; ?>
   </div>
 </div>
 

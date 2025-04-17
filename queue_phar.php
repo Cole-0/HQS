@@ -9,6 +9,7 @@ $deptName = "Unknown Department";
 $deptStmt = $conn->prepare("SELECT name FROM departments WHERE dept_id = :dept_id");
 $deptStmt->execute(['dept_id' => $departmentId]);
 if ($row = $deptStmt->fetch()) {
+
     $deptName = $row['name'];
 }
 
@@ -20,7 +21,7 @@ ORDER BY
     CASE priority
         WHEN 'emergency' THEN 1
         WHEN 'PWD' THEN 2
-        WHEN 'Senior_Citizen' THEN 3
+        WHEN 'senior' THEN 3
         WHEN 'pregnant' THEN 4
         ELSE 5
     END,
@@ -54,7 +55,7 @@ $extraStmt = $conn->prepare("
     SELECT * FROM queues 
     WHERE status = 'waiting' 
     AND department_id = :dept_id 
-    ORDER BY FIELD(priority, 'emergency', 'pwd', 'Senior_Citizen', 'pregnant', 'regular'), 
+    ORDER BY FIELD(priority, 'emergency', 'pwd', 'senior', 'pregnant', 'regular'), 
              CAST(SUBSTRING(queue_num, 5) AS UNSIGNED) ASC 
     LIMIT 18446744073709551615 OFFSET 3
 ");
@@ -68,7 +69,7 @@ if (isset($_POST['next_in_queue'])) {
     if ($nextQueue) {
         // Mark current queue as finished
         if ($currentQueue) {
-            $conn->prepare("UPDATE queues SET status = 'finished' WHERE qid = :qid")
+            $conn->prepare("UPDATE queues SET status = 'completed' WHERE qid = :qid")
                  ->execute(['qid' => $currentQueue['qid']]);
         }
 
@@ -158,6 +159,20 @@ if (isset($_POST['next_in_queue'])) {
       font-size: 14px;
       display: inline-block;
     }
+    .announce-button {
+  margin-top: 15px;
+  padding: 10px 20px;
+  background-color: #4CAF50;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.announce-button:hover {
+  background-color: #3e8e41;
+}
   </style>
   <script>
     // Auto-refresh every 10 seconds
@@ -184,8 +199,11 @@ if (isset($_POST['next_in_queue'])) {
     <h2>Department: <?= htmlspecialchars($deptName) ?></h2>
 
     <?php if ($currentQueue): ?>
-      <button onclick="repeatAnnouncement()" class="next-button" style="background-color: #e76f51; margin-top: 10px;">🔊 Repeat Announcement</button>
+      <button onclick="announceCurrentQueue()" class="announce-button">
+        Repeat Announcement
+      </button>
       <div class="current">In-Progress</div>
+     
       <div class="current-number"><?= str_pad($currentQueue['queue_num'], 3, '0', STR_PAD_LEFT); ?></div>
       <div class="details">
         Service: <?= htmlspecialchars($currentQueue['service_name']); ?> |
@@ -227,70 +245,176 @@ if (isset($_POST['next_in_queue'])) {
     <?php endif; ?>
   </div>
   <script>
-  function announceQueue(queueNumber, departmentName) {
-    const message = `Patient with the queue number ${queueNumber}, please proceed to the ${departmentName} department.`;
+// Global state for this tab
+const tabState = {
+  id: Math.random().toString(36).substring(2, 15),
+  isSpeaking: false,
+  lastAnnounceTime: 0
+};
 
-    // Stop any existing speech 
-    window.speechSynthesis.cancel();
+// Announcement queue system
+const announcementSystem = {
+  // Add announcement to queue
+  addAnnouncement: function(queueNumber, departmentName) {
+    const now = Date.now();
+    const message = `Patient with queue number ${queueNumber}, please proceed to the ${departmentName} department.`;
+    
+    // Throttle rapid clicks (minimum 500ms between adds)
+    if (now - tabState.lastAnnounceTime < 500) {
+      console.log('Too fast - throttling');
+      return;
+    }
+    tabState.lastAnnounceTime = now;
 
+    const announcement = {
+      message: message,
+      timestamp: now,
+      tabId: tabState.id
+    };
+
+    // Get or initialize queue
+    let queue = [];
+    try {
+      queue = JSON.parse(localStorage.getItem('announcementQueue') || '[]');
+    } catch (e) {
+      console.error('Queue parse error:', e);
+    }
+
+    queue.push(announcement);
+    localStorage.setItem('announcementQueue', JSON.stringify(queue));
+    
+    // Start processing if not already running
+    this.processQueue();
+  },
+
+  // Process the announcement queue
+  processQueue: function() {
+    // Check if another tab is already processing
+    const currentLock = localStorage.getItem('announcementLock');
+    if (currentLock && currentLock !== tabState.id) {
+      setTimeout(() => this.processQueue(), 300);
+      return;
+    }
+
+    // Get queue safely
+    let queue = [];
+    try {
+      queue = JSON.parse(localStorage.getItem('announcementQueue') || '[]');
+    } catch (e) {
+      console.error('Queue parse error:', e);
+      return;
+    }
+
+    if (queue.length === 0) {
+      localStorage.removeItem('announcementLock');
+      return;
+    }
+
+    // Take lock before processing
+    localStorage.setItem('announcementLock', tabState.id);
+    const nextAnnouncement = queue.shift();
+    localStorage.setItem('announcementQueue', JSON.stringify(queue));
+
+    this.speakAnnouncement(nextAnnouncement.message);
+  },
+
+  // Speak an announcement
+  speakAnnouncement: function(message) {
+    // Cancel any existing speech in this tab
+    if (tabState.isSpeaking) {
+      window.speechSynthesis.cancel();
+    }
+
+    tabState.isSpeaking = true;
+    
     const utterance = new SpeechSynthesisUtterance(message);
     utterance.lang = 'en-US';
     utterance.rate = 0.9;
 
-    // Function to handle selecting voice and speaking
-    function setVoiceAndSpeak() {
-      const voices = window.speechSynthesis.getVoices();
+    // Voice selection
+    const voices = window.speechSynthesis.getVoices();
+    const selectedVoice = voices.find(v => v.name.includes("Zira")) || 
+                         voices.find(v => v.name.toLowerCase().includes("female")) ||
+                         voices.find(v => v.lang === "en-US");
+    
+    if (selectedVoice) {
+      utterance.voice = selectedVoice;
+    }
 
-      let selectedVoice = voices.find(v => v.name.includes("Zira")) || 
-                          voices.find(v => v.name.toLowerCase().includes("female")) ||
-                          voices.find(v => v.lang === "en-US");
+    // Handle end of speech
+    utterance.onend = () => {
+      tabState.isSpeaking = false;
+      localStorage.removeItem('announcementLock');
+      setTimeout(() => this.processQueue(), 300);
+    };
 
-      if (selectedVoice) {
-        utterance.voice = selectedVoice;
+    // Handle errors
+    utterance.onerror = (event) => {
+      console.error('Announcement error:', event);
+      tabState.isSpeaking = false;
+      localStorage.removeItem('announcementLock');
+      setTimeout(() => this.processQueue(), 300);
+    };
+
+    window.speechSynthesis.speak(utterance);
+  },
+
+  // Initialize the system
+  init: function() {
+    // Clean up if tab closes
+    window.addEventListener('beforeunload', () => {
+      if (tabState.isSpeaking) {
+        localStorage.removeItem('announcementLock');
       }
+    });
 
-      // Delay to ensure the message is spoken fully without cutting off
-      setTimeout(() => {
-        window.speechSynthesis.speak(utterance);
-      }, 100);
-    }
-
-    // Check if voices are loaded and then execute
-    if (speechSynthesis.getVoices().length === 0) {
-      window.speechSynthesis.onvoiceschanged = setVoiceAndSpeak;
-    } else {
-      setVoiceAndSpeak();
-    }
+    // Start processing any existing queue
+    setTimeout(() => this.processQueue(), 1000);
   }
+};
 
-  function initAnnouncement() {
-    <?php if ($currentQueue): ?>
-      const currentQueueNumber = "<?= $currentQueue['queue_num'] ?>";
-      const departmentName = "<?= addslashes($deptName) ?>";
-      const announcedKey = `announced_${currentQueueNumber}_<?= $departmentId ?>`;
-
+// Initialize when voices are loaded
+function initializeAnnouncements() {
+  if (window.speechSynthesis.getVoices().length === 0) {
+    window.speechSynthesis.onvoiceschanged = initializeAnnouncements;
+    return;
+  }
+  
+  announcementSystem.init();
+  
+  <?php if (isset($currentQueue) && $currentQueue): ?>
+    // Auto-announce on page load 
+    if (window.location.pathname.includes('queue_phar.php')) {
+      const announcedKey = `announced_${<?= $currentQueue['queue_num'] ?>}_<?= $departmentId ?>`;
       if (!localStorage.getItem(announcedKey)) {
         setTimeout(() => {
-          announceQueue(currentQueueNumber, departmentName);
+          announcementSystem.addAnnouncement(
+            "<?= $currentQueue['queue_num'] ?>", 
+            "<?= addslashes($deptName) ?>"
+          );
           localStorage.setItem(announcedKey, 'true');
-        }, 1000); // Slight delay to ensure page load before speaking
+        }, 1500);
       }
-    <?php endif; ?>
-  }
-  function repeatAnnouncement() {
-  const currentQueueNumber = "<?= $currentQueue['queue_num'] ?? '' ?>";
-  const departmentName = "<?= addslashes($deptName) ?>";
-
-  if (currentQueueNumber) {
-    announceQueue(currentQueueNumber, departmentName);
-  }
+    }
+  <?php endif; ?>
 }
 
-  // Wait for the page to load before running the announcement function
-  window.addEventListener('load', () => {
-    setTimeout(initAnnouncement, 500);  // Ensure the page is fully loaded
-  });
-</script>
+// Button click handler
+function announceCurrentQueue() {
+  <?php if (isset($currentQueue) && $currentQueue): ?>
+    announcementSystem.addAnnouncement(
+      "<?= $currentQueue['queue_num'] ?>", 
+      "<?= addslashes($deptName) ?>"
+    );
+  <?php else: ?>
+    alert("No current queue to announce!");
+  <?php endif; ?>
+}
 
+// Start initialization
+window.addEventListener('load', () => {
+  initializeAnnouncements();
+});
+</script>
 </body>
 </html>

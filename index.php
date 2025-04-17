@@ -7,6 +7,7 @@ if (isset($_POST["btnLogin"])) {
     require("lib/conn.php");
     $username = trim($_POST["username"] ?? '');
     $password = trim($_POST["password"] ?? '');
+    $role = trim($_POST["role"] ?? '');
 
     if (empty($username)) {
         $showAlert = true;
@@ -21,11 +22,13 @@ if (isset($_POST["btnLogin"])) {
         if ($user && password_verify($password, $user['password'])) {
             $_SESSION['user_id'] = $user['user_id'];
             $_SESSION['username'] = $username;
+           
 
             if ($user['role'] == 'Admin') {
+              $_SESSION['role'] = $role;
                 header("Location: mainpage.php");
                 exit();
-            } elseif (in_array($user['role'], ['Admitting', 'HMO', 'Information'])) {
+            } elseif (in_array($user['role'], ['Admitting', 'Information'])) {
                 header("Location: queue_display.php");
                 exit();
             } elseif ($user['role'] == 'User') {
@@ -233,10 +236,10 @@ if (isset($_POST["btnLogin"])) {
           <button type="submit" class="btn" name="btnLogin">Login</button>
         </div>
       </form>
-      <div class="text-center">
+      <!-- <div class="text-center">
         Don't have an account? <a href="register.php">Sign up</a><br>
         <a href="forgot_password.php">Forgot password?</a>
-      </div>
+      </div> -->
     </div>
   </div>
 

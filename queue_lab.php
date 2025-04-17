@@ -68,7 +68,7 @@ if (isset($_POST['next_in_queue'])) {
     if ($nextQueue) {
         // Mark current queue as finished
         if ($currentQueue) {
-            $conn->prepare("UPDATE queues SET status = 'finished' WHERE qid = :qid")
+            $conn->prepare("UPDATE queues SET status = 'completed' WHERE qid = :qid")
                  ->execute(['qid' => $currentQueue['qid']]);
         }
 
@@ -199,8 +199,8 @@ if (isset($_POST['next_in_queue'])) {
 
     <?php if ($currentQueue): ?>
       <button onclick="announceCurrentQueue()" class="announce-button">
-  Repeat Announcement
-</button>
+        Repeat Announcement
+      </button>
       <div class="current">In-Progress</div>
      
       <div class="current-number"><?= str_pad($currentQueue['queue_num'], 3, '0', STR_PAD_LEFT); ?></div>
@@ -382,7 +382,7 @@ function initializeAnnouncements() {
   announcementSystem.init();
   
   <?php if (isset($currentQueue) && $currentQueue): ?>
-    // Auto-announce on page load (only for queue_bil.php)
+    // Auto-announce on page load 
     if (window.location.pathname.includes('queue_lab.php')) {
       const announcedKey = `announced_${<?= $currentQueue['queue_num'] ?>}_<?= $departmentId ?>`;
       if (!localStorage.getItem(announcedKey)) {

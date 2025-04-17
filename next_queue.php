@@ -11,9 +11,9 @@ if (!$currentQueueId || !$departmentId) {
 }
 
 // Update the current queue to "completed"
-$updateSql = "UPDATE queues SET status = 'completed' WHERE qid = :qid AND department_id = :dept_id";
+$updateSql = "UPDATE queues SET status = 'in-progress' WHERE qid = :qid";
 $updateStmt = $conn->prepare($updateSql);
-$updateStmt->execute(['qid' => $currentQueueId, 'dept_id' => $departmentId]);
+$updateStmt->execute(['qid' => $currentQueueId]);
 
 // Get the next queue to be in progress
 $nextQueueSql = "SELECT * FROM queues WHERE status = 'waiting' AND department_id = :dept_id ORDER BY created_at ASC LIMIT 1";
